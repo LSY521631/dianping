@@ -1,5 +1,6 @@
 package com.hmdp.service.impl;
 
+import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -34,6 +35,24 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
      * @return
      */
     public Result queryById(Long id) {
+        //缓存穿透
+        //Shop shop = queryWithPassThough(id);
+
+        //互斥锁解决缓存击穿
+        Shop shop = queryWithMutex(id);
+        if (shop == null) {
+            return Result.fail("商铺不存在");
+        }
+        return Result.ok(shop);
+    }
+
+    /**
+     * 解决缓存穿透
+     *
+     * @param id
+     * @return
+     */
+    public Shop queryWithPassThough(Long id) {
         //从redis中查询商铺缓存
         String key = CACHE_SHOP_KEY + id;
         String shopJson = stringRedisTemplate.opsForValue().get(key);
@@ -41,13 +60,12 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         //判断是否存在
         if (StrUtil.isNotBlank(shopJson)) {
             //存在则直接返回
-            Shop shop = JSONUtil.toBean(shopJson, Shop.class);
-            return Result.ok(shop);
+            return JSONUtil.toBean(shopJson, Shop.class);
         }
 
         //判断命中的是否为空值,(“”不是空值)
         if (shopJson != null) {
-            Result.fail("店铺不存在");
+            return null;
         }
 
         //redis中不存在，根据id查询数据库
@@ -57,8 +75,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         if (shop == null) {
             //将空值写入redis(缓存穿透)
             stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
-
-            return Result.fail("店铺不存在");
+            return null;
         }
 
         //存在shop,写入redis并返回
@@ -66,8 +83,72 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                 .opsForValue()
                 .set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL + RandomUtil.randomLong(1, 5), TimeUnit.MINUTES);
 
-        return Result.ok(shop);
+        return shop;
     }
+
+    /**
+     * 互斥锁解决缓存击穿
+     *
+     * @param id
+     * @return
+     */
+    public Shop queryWithMutex(Long id) {
+        //从redis中查询商铺缓存
+        String key = CACHE_SHOP_KEY + id;
+        String shopJson = stringRedisTemplate.opsForValue().get(key);
+
+        //判断是否存在
+        if (StrUtil.isNotBlank(shopJson)) {
+            //存在则直接返回
+            return JSONUtil.toBean(shopJson, Shop.class);
+        }
+
+        //判断命中的是否为空值,(“”不是空值)
+        if (shopJson != null) {
+            return null;
+        }
+        String lockKey = null;
+        Shop shop = null;
+
+        try {
+            //实现缓存重建
+            //获取互斥锁
+            lockKey = LOCK_SHOP_KEY + id;
+            Boolean isTrue = tryLock(lockKey);
+
+            //判断是否成功
+            if (!isTrue) {
+                //失败，休眠并重试
+                Thread.sleep(50);
+                return queryWithMutex(id);
+            }
+
+            //TODO 获取锁成功后需要二次检验缓存是否存在
+
+            //redis中不存在，根据id查询数据库
+            shop = getById(id);
+
+            //判断数据库中shop是否存在
+            if (shop == null) {
+                //将空值写入redis(缓存穿透)
+                stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
+                return null;
+            }
+
+            //存在shop,写入redis
+            stringRedisTemplate
+                    .opsForValue()
+                    .set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL + RandomUtil.randomLong(1, 5), TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            //释放互斥锁
+            unlock(lockKey);
+        }
+
+        return shop;
+    }
+
 
     /**
      * 更新商铺信息
@@ -89,5 +170,28 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
 
         return Result.ok();
+    }
+
+
+    /**
+     * 尝试获取锁
+     *
+     * @param key
+     * @return
+     */
+    private Boolean tryLock(String key) {
+        //尝试获取锁
+        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10, TimeUnit.SECONDS);
+        //判断获取锁成功与否
+        return BooleanUtil.isTrue(flag);
+    }
+
+    /**
+     * 尝试释放锁
+     *
+     * @param key
+     */
+    private void unlock(String key) {
+        stringRedisTemplate.delete(key);
     }
 }
