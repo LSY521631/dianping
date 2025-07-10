@@ -88,8 +88,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     /**
      * 保存店铺逻辑过期时间到redis
      *
-     * @param id
-     * @param expireSeconds
+     * @param id            商铺id
+     * @param expireSeconds 过期时间
      */
 
     public void saveShop2Redis(Long id, Long expireSeconds) {

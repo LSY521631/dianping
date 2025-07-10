@@ -278,25 +278,5 @@ public class CacheClient {
         stringRedisTemplate.delete(key);
     }
 
-    /**
-     * 保存店铺逻辑过期时间到redis
-     *
-     * @param id
-     * @param expireSeconds
-     */
-
-    public void saveShop2Redis(Long id, Long expireSeconds) {
-        //查询店铺信息
-        Shop shop = getById(id);
-
-        //封装逻辑过期时间
-        RedisData redisData = new RedisData();
-        redisData.setData(shop);
-        redisData.setExpireTime(LocalDateTime.now().plusSeconds(expireSeconds));
-
-        //写入redis
-        stringRedisTemplate.opsForValue().set(CACHE_SHOP_KEY + id, JSONUtil.toJsonStr(redisData));
-
-    }
 
 }
