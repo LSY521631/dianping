@@ -30,7 +30,6 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
      * @return
      */
     public Result queryById(Long id) {
-
         //从redis中查询商铺缓存
         String key = CACHE_SHOP_KEY + id;
         String shopJson = stringRedisTemplate.opsForValue().get(key);
