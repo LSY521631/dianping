@@ -91,7 +91,6 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
      * @param id            商铺id
      * @param expireSeconds 过期时间
      */
-
     public void saveShop2Redis(Long id, Long expireSeconds) {
         //查询店铺信息
         Shop shop = getById(id);

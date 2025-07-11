@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- *
+ * 刷新token拦截器
  */
 public class RefreshTokenInterceptor implements HandlerInterceptor {
 
