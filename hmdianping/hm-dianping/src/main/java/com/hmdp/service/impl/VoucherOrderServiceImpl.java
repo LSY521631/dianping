@@ -36,10 +36,17 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
      * @param voucherId
      * @return
      */
+    @Override
     @Transactional
     public Result seckillVoucher(Long voucherId) {
+        log.info("开始出售优惠券");
         //查询优惠券
         SeckillVoucher voucher = iSeckillVoucherService.getById(voucherId);
+
+        if (voucher == null) {
+            log.info("优惠券不存在");
+//            return Result.fail("优惠券不存在");
+        }
 
         //判断秒杀是否开始
         if (voucher.getBeginTime().isAfter(LocalDateTime.now())) {
@@ -54,14 +61,16 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return Result.fail("秒杀券库存不足");
         }
 
-        //扣减库存
-        boolean isUpdate = iSeckillVoucherService.update()
-                .setSql("stock = stock - 1")
+        //扣减库存，增加乐观锁逻辑
+        boolean success = iSeckillVoucherService
+                .update()
+                .setSql("stock = stock - 1") //set stock=stock-1
                 .eq("voucher_id", voucherId)
+                .gt("stock", 0)//where id = ? and stock > 0
                 .update();
 
         //判断是否更新成功
-        if (!isUpdate) {
+        if (!success) {
             return Result.fail("库存不足");
         }
 
@@ -69,7 +78,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         VoucherOrder voucherOrder = new VoucherOrder();
 
         //订单id
-        Long orderId = redisIdWorker.nextId("order");
+        long orderId = redisIdWorker.nextId("order");
         voucherOrder.setId(orderId);
 
         //用户id

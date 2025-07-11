@@ -65,7 +65,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
 
         //将查询到的信息转为userDTO
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
-        log.info("将查询到的信息转为userDTO:{}", userDTO);
+        //log.info("将查询到的信息转为userDTO:{}", userDTO);
 
         //存在，将用户信息存在threadlocal中
         UserHolder.saveUser(userDTO);
