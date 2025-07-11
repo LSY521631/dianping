@@ -92,7 +92,7 @@ public class CacheClient {
 
         //判断是否存在
         if (StrUtil.isNotBlank(json)) {
-            //不存在则直接null
+            //存在直接返回
             return JSONUtil.toBean(json, type);
         }
 
@@ -143,14 +143,14 @@ public class CacheClient {
 
         //判断是否存在
         if (StrUtil.isBlank(json)) {
-            //存在，直接返回
+            //？存在，直接返回
             return null;
         }
 
         //命中，需要先把json反序列化为对象
         RedisData redisData = JSONUtil.toBean(json, RedisData.class);
         R r = JSONUtil.toBean((JSONObject) redisData.getData(), type);
-        LocalDateTime expireTime = redisData.getExpireTime();
+        LocalDateTime expireTime = redisData.getExpireTime();//逻辑过期时间
 
         //判断是否过期
         if (expireTime.isAfter(LocalDateTime.now())) {

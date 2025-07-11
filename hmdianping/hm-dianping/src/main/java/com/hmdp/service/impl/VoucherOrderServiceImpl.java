@@ -82,6 +82,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         //保存订单到数据库
         save(voucherOrder);
 
-        return Result.ok();
+        return Result.ok(orderId);
     }
 }

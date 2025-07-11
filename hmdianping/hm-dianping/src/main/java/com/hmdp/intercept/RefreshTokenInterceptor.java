@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.UserHolder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -13,10 +14,13 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.hmdp.utils.RedisConstants.LOGIN_USER_TTL;
+
 
 /**
  * 刷新token拦截器
  */
+@Slf4j
 public class RefreshTokenInterceptor implements HandlerInterceptor {
 
     //此处不能使用注解，为什么？LoginIntercept类是手动创建的，不是spring帮我创建的，无法依赖注入
@@ -41,7 +45,8 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
      * @throws Exception
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+            throws Exception {
         //获取请求中的token
         String token = request.getHeader("authorization");
         if (StrUtil.isBlank(token)) {
@@ -60,19 +65,20 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
 
         //将查询到的信息转为userDTO
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
-
-        //刷新token的时间
-        stringRedisTemplate.expire(key, RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);
+        log.info("将查询到的信息转为userDTO:{}", userDTO);
 
         //存在，将用户信息存在threadlocal中
         UserHolder.saveUser(userDTO);
+
+        //刷新token的时间
+        stringRedisTemplate.expire(key, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
         //放行
         return true;
     }
 
     /**
-     * 拦截器
+     * 释放拦截器
      *
      * @param request
      * @param response

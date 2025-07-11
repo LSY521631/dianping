@@ -67,10 +67,15 @@ public class UserController {
      */
     @GetMapping("/me")
     public Result me() {
-        UserDTO userDTO = UserHolder.getUser();
-        return Result.ok(userDTO);
+        UserDTO user = UserHolder.getUser();
+        return Result.ok(user);
     }
 
+    /**
+     * 获取用户信息
+     * @param userId
+     * @return
+     */
     @GetMapping("/info/{id}")
     public Result info(@PathVariable("id") Long userId) {
         // 查询详情

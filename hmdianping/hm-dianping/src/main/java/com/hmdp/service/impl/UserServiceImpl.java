@@ -78,7 +78,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         //校验验证码,从redis中获取
-        Object cacheCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
+        String cacheCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
         String code = loginForm.getCode();
         if (cacheCode == null || !cacheCode.equals(code)) {
             //不一致，返回错误信息
@@ -104,16 +104,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 new HashMap<>(),//目标对象
                 CopyOptions.create()//配置转换过程
                         .setIgnoreNullValue(true)//忽略null值
-                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString())//转为字符串
+                        .setFieldValueEditor(
+                                (fieldName, fieldValue) -> fieldValue.toString()
+                        )//转为字符串
         );
 
         //保存用户信息到redis中
         String tokenKey = LOGIN_USER_KEY + token;
         stringRedisTemplate.opsForHash().putAll(tokenKey, userMap);
+
         //设置token有效期
         stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
-        return Result.ok();
+        return Result.ok(token);
     }
 
     /**

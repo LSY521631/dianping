@@ -43,7 +43,7 @@ public class MvcConfig implements WebMvcConfigurer {
          * 刷新令牌拦截器
          */
         registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate))
-                .excludePathPatterns("/**")
+                .addPathPatterns("/**")
                 .order(0);
     }
 }
