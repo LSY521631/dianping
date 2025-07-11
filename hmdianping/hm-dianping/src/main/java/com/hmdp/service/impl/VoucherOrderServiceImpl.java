@@ -10,7 +10,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.service.IVoucherService;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Resource
     private RedisIdWorker redisIdWorker;
 
+
     /**
      * 秒杀优惠券下单
      *
@@ -37,7 +40,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
      * @return
      */
     @Override
-    @Transactional
     public Result seckillVoucher(Long voucherId) {
         log.info("开始出售优惠券");
         //查询优惠券
@@ -45,7 +47,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         if (voucher == null) {
             log.info("优惠券不存在");
-//            return Result.fail("优惠券不存在");
+            return Result.fail("优惠券不存在");
         }
 
         //判断秒杀是否开始
@@ -59,6 +61,33 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         //判断库存是否充足
         if (voucher.getStock() < 1) {
             return Result.fail("秒杀券库存不足");
+        }
+
+        //调整锁的颗粒度
+        Long userId = UserHolder.getUser().getId();
+        synchronized (userId.toString().intern()) { //锁对象
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();//获取代理对象,即IVoucherOrderService的代理对象
+            return proxy.createVoucherOrder(voucherId);//创建订单
+        }
+
+
+    }
+
+    /**
+     * 创建保存订单
+     *
+     * @param voucherId
+     * @return
+     */
+    @Transactional
+    public Result createVoucherOrder(Long voucherId) {
+        //用户id
+        Long userId = UserHolder.getUser().getId();
+        //获取该用户的订单数 SELECT COUNT(*) FROM tb_voucher_order WHERE user_Id = ? AND voucher_id = ?
+        int count = query().eq("user_Id", userId).eq("voucher_id", voucherId).count();
+
+        if (count > 0) {
+            return Result.fail("用户已经购买过一次！");
         }
 
         //扣减库存，增加乐观锁逻辑
@@ -81,8 +110,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         long orderId = redisIdWorker.nextId("order");
         voucherOrder.setId(orderId);
 
-        //用户id
-        Long userId = UserHolder.getUser().getId();
+
         voucherOrder.setUserId(userId);
 
         //代金券id
