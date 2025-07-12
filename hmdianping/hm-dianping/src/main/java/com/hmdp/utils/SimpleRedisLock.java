@@ -2,8 +2,11 @@ package com.hmdp.utils;
 
 import cn.hutool.core.lang.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -29,6 +32,15 @@ public class SimpleRedisLock implements ILock {
     //生成一个UUID,true表示去掉横线
     private static final String ID_PREFIX = UUID.randomUUID().toString(true) + "_";
 
+    //声明一个不可变的静态常量，用于执行 Redis Lua 脚本的封装对象
+    private static final DefaultRedisScript<Long> UNLOCK_SCRIPT;
+
+    //静态代码块：在类加载时执行一次，完成 UNLOCK_SCRIPT 的初始化
+    static {
+        UNLOCK_SCRIPT = new DefaultRedisScript<>();//创建一个新的 DefaultRedisScript 实例，泛型指定脚本返回值类型为 Long
+        UNLOCK_SCRIPT.setLocation(new ClassPathResource("unlock.lua"));
+        UNLOCK_SCRIPT.setResultType(Long.class);
+    }
 
     /**
      * 尝试获取锁
@@ -48,7 +60,22 @@ public class SimpleRedisLock implements ILock {
         return Boolean.TRUE.equals(success);
     }
 
+    /**
+     * 使用lua脚本实现释放锁
+     */
     @Override
+    public void unlock() {
+        //调用脚本,一行代码且调用的脚本，保证了原子性
+        stringRedisTemplate.execute(
+                UNLOCK_SCRIPT,
+                Collections.singletonList(KEY_PREFIX + name),
+                ID_PREFIX + Thread.currentThread().getId()
+        );
+
+    }
+
+
+ /*   @Override
     public void unlock() {
         //获取线程标识
         String threadId = ID_PREFIX + Thread.currentThread().getId();
@@ -62,5 +89,5 @@ public class SimpleRedisLock implements ILock {
             log.info("删除锁");
             stringRedisTemplate.delete(KEY_PREFIX + name);
         }
-    }
+    }*/
 }
