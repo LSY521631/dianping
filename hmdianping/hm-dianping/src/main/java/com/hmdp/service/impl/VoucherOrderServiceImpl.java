@@ -9,10 +9,12 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.service.IVoucherService;
 import com.hmdp.utils.RedisIdWorker;
+import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService iSeckillVoucherService;
     @Resource
     private RedisIdWorker redisIdWorker;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
 
     /**
@@ -65,11 +69,31 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         //调整锁的颗粒度
         Long userId = UserHolder.getUser().getId();
-        synchronized (userId.toString().intern()) { //锁对象
-            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();//获取代理对象,即IVoucherOrderService的代理对象
-            return proxy.createVoucherOrder(voucherId);//创建订单
-        }
 
+// 修改前
+//        synchronized (userId.toString().intern()) { //锁对象
+//            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();//获取代理对象,即IVoucherOrderService的代理对象
+//            return proxy.createVoucherOrder(voucherId);//创建订单
+//        }
+
+        //创建锁对象
+        SimpleRedisLock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+
+        //获取锁,为测试将锁的过期时间设置为1200秒
+        boolean success = lock.tryLock(1200);
+
+        //加锁失败
+        if (!success) {
+            return Result.fail("获取锁失败！不允许重复下单");
+        }
+        try {
+            ///获取代理对象(事务)
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+            return proxy.createVoucherOrder(voucherId);
+        } finally {
+            //释放锁
+            lock.unlock();
+        }
 
     }
 
