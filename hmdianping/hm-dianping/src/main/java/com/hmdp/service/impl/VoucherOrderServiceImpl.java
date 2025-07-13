@@ -13,6 +13,8 @@ import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private RedisIdWorker redisIdWorker;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private RedissonClient redissonClient;
 
 
     /**
@@ -77,10 +81,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 //        }
 
         //创建锁对象
-        SimpleRedisLock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+        //SimpleRedisLock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+        //使用redisson中的锁
+        RLock lock = redissonClient.getLock("lock:order:" + userId);
 
-        //获取锁,为测试将锁的过期时间设置为1200秒
-        boolean success = lock.tryLock(1200);
+        //获取锁,为测试将锁的过期时间设置为0秒,即不等待
+        boolean success = lock.tryLock();
 
         //加锁失败
         if (!success) {
