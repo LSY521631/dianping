@@ -45,6 +45,7 @@ public class BlogController {
 
     /**
      * 根据id实现点赞功能
+     *
      * @param id
      * @return
      */
@@ -86,5 +87,16 @@ public class BlogController {
     @GetMapping("/{id}")
     public Result queryBlogById(@PathVariable("id") Long id) {
         return blogService.queryBlogById(id);
+    }
+
+    /**
+     * 查询博客点赞排行榜
+     *
+     * @param id
+     * @return
+     */
+    @GetMapping("/likes/{id}")
+    public Result queryBlogLikes(@PathVariable("id") Long id) {
+        return blogService.queryBlogLikes(id);
     }
 }

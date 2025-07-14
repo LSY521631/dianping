@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
  * <p>
- *  服务类
+ * 服务类
  * </p>
  *
  * @author 虎哥
@@ -16,6 +16,7 @@ public interface IBlogService extends IService<Blog> {
 
     /**
      * 查询最热博客
+     *
      * @param current
      * @return
      */
@@ -24,6 +25,7 @@ public interface IBlogService extends IService<Blog> {
 
     /**
      * 根据id查询博客详情
+     *
      * @param id
      * @return
      */
@@ -31,8 +33,17 @@ public interface IBlogService extends IService<Blog> {
 
     /**
      * 点赞博客
+     *
      * @param id
      * @return
      */
     Result likeBlog(Long id);
+
+    /**
+     * 查询博客点赞排行榜
+     *
+     * @param id
+     * @return
+     */
+    Result queryBlogLikes(Long id);
 }
