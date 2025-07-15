@@ -34,20 +34,24 @@ class HmDianPingApplicationTests {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    private ExecutorService es = Executors.newFixedThreadPool(500);
+   // private ExecutorService es = Executors.newFixedThreadPool(500);
 
 
-    @Test
-    void testSaveShop() {
-        //保存
-        shopServiceImpl.saveShop2Redis(1L, 10L);
-    }
+//    @Test
+//    void testSaveShop() {
+//        //保存
+//        shopServiceImpl.saveShop2Redis(1L, 10L);
+//    }
 
-    /**
+/*
+
+    */
+/**
      * 测试RedisIdWorker
      *
      * @throws InterruptedException
-     */
+     *//*
+
     @Test
     void testIdWorker() throws InterruptedException {
         //线程数
@@ -67,6 +71,7 @@ class HmDianPingApplicationTests {
         long end = System.currentTimeMillis();
         System.out.println("time = " + (end - begin));
     }
+*/
 
 
     /**
@@ -100,5 +105,24 @@ class HmDianPingApplicationTests {
             stringRedisTemplate.opsForGeo().add(key, locations);
         }
         log.info("导入店铺数据到redis中成功");
+    }
+
+    @Test
+    void testHyperLogLog() {
+        //准备数组，装用户数据
+        String[] values = new String[1000];
+        int j = 0;
+
+        for (int i = 0; i <= 1000000; i++) {
+            j = i % 1000;
+            values[j] = "user_" + i;
+            if (j == 999) {
+                //发送到redis
+                stringRedisTemplate.opsForHyperLogLog().add("hl2", values);
+            }
+        }
+        //统计数量
+        Long count = stringRedisTemplate.opsForHyperLogLog().size("hl2");
+        System.out.println("count:" + count);
     }
 }
