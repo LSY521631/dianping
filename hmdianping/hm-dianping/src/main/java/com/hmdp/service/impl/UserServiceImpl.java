@@ -13,16 +13,20 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -134,5 +138,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //保存用户
         save(user);
         return user;
+    }
+
+    /**
+     * 签到功能
+     *
+     * @return
+     */
+    @Override
+    public Result sign() {
+        //获取用户
+        Long userId = UserHolder.getUser().getId();
+
+        //获取日期
+        LocalDateTime now = LocalDateTime.now();
+
+        //拼接key
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        String key = USER_SIGN_KEY + keySuffix;
+
+        //获取是当月的第几天
+        int dayOfMonth = now.getDayOfMonth();
+
+        //写入redis并返回
+        stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+        return Result.ok();
     }
 }
