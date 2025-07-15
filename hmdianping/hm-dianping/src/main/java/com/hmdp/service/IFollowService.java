@@ -25,4 +25,12 @@ public interface IFollowService extends IService<Follow> {
      * @return
      */
     Result isFollow(Long followUserId);
+
+    /**
+     * 查询共同关注
+     *
+     * @param id
+     * @return
+     */
+    Result followCommon(Long id);
 }
