@@ -122,4 +122,14 @@ public class UserController {
     public Result sign() {
         return userService.sign();
     }
+
+    /**
+     * 签到统计
+     *
+     * @return
+     */
+    @PostMapping("/sign/count")
+    public Result signCount() {
+        return userService.signCount();
+    }
 }

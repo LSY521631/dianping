@@ -28,6 +28,7 @@ public interface IUserService extends IService<User> {
 
     /**
      * 实现登录功能
+     *
      * @param loginForm
      * @param session
      * @return
@@ -36,8 +37,16 @@ public interface IUserService extends IService<User> {
 
     /**
      * 签到功能
+     *
      * @return
      */
     Result sign();
+
+    /**
+     * 统计签到功能
+     *
+     * @return
+     */
+    Result signCount();
 
 }
